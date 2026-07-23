@@ -323,12 +323,19 @@ def main():
     print("\n--- 2/3 n8n ---")
     if have_n8n:
         webhook_url = n8n_setup(env)
+    elif env.get("N8N_WEBHOOK_URL"):
+        webhook_url = env["N8N_WEBHOOK_URL"]
+        print(f"! No n8n API key — assuming the workflow was imported manually in the")
+        print(f"  n8n UI and its webhook is live at: {webhook_url}")
+        print("  (If you haven't imported n8n/angel-workflow.json yet, do it before")
+        print("  testing calls — Angel's bookings will fail until it's active.)")
     else:
         webhook_url = PLACEHOLDER_WEBHOOK
         print("! N8N_API_KEY / N8N_INSTANCE_URL not set — skipping n8n.")
         print("  Angel's functions will point at a placeholder URL, so booking and")
         print("  emails won't fire yet. Re-run this script after adding the n8n keys")
-        print("  to .env and it will import the workflow and fix the URLs in place.")
+        print("  (or N8N_WEBHOOK_URL for a manually imported workflow) to .env and")
+        print("  it will fix the URLs in place.")
     print("\n--- 3/3 Retell ---")
     retell_setup(env, webhook_url, trunk)
 
