@@ -12,6 +12,11 @@ the manual clicking below:
    `N8N_API_KEY`, and `N8N_INSTANCE_URL`.
 2. Run `python3 scripts/setup.py` (no dependencies needed — pure stdlib).
 
+The n8n keys are optional on the first run: without them the script still
+does the Twilio and Retell setup with a placeholder webhook, and a re-run
+after you add `N8N_API_KEY`/`N8N_INSTANCE_URL` imports the workflow and
+repoints Angel's functions at the real webhook in place.
+
 The script creates the Twilio SIP trunk and attaches your number, imports and
 activates the n8n workflow, creates the Angel agent on Retell with the prompt
 and functions from `agent/`, and imports the number so inbound calls reach

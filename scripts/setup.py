@@ -42,6 +42,7 @@ PROMPT_FILE = REPO_ROOT / "agent" / "system-prompt.md"
 FUNCTIONS_FILE = REPO_ROOT / "agent" / "functions.json"
 BEGIN_MESSAGE = "Thanks for calling Arlo, this is Angel — how can I help you today?"
 VOICE_ID = "openai-Nova"  # falls back to first available openai voice if rejected
+PLACEHOLDER_WEBHOOK = "https://placeholder.invalid/webhook/angel"
 
 
 def load_env():
@@ -89,6 +90,12 @@ def request(method, url, *, headers=None, form=None, body=None):
             return e.code, json.loads(text)
         except json.JSONDecodeError:
             return e.code, {"raw": text}
+    except (urllib.error.URLError, OSError) as e:
+        host = urllib.parse.urlparse(url).hostname
+        sys.exit(f"Network error reaching {host}: {e.reason if hasattr(e, 'reason') else e}\n"
+                 f"If you're running this inside a restricted environment, its network\n"
+                 f"policy must allow: api.twilio.com, trunking.twilio.com,\n"
+                 f"api.retellai.com, and your n8n domain. Or run this script locally.")
 
 
 def die(step, status, payload):
@@ -226,6 +233,14 @@ def n8n_setup(env):
 
 # ---------------------------------------------------------------- Retell ----
 
+def build_tools(webhook_url):
+    fns = json.loads(FUNCTIONS_FILE.read_text())["functions"]
+    return [{"type": "custom", "name": f["name"], "description": f["description"],
+             "url": webhook_url, "parameters": f["parameters"],
+             "speak_during_execution": True, "speak_after_execution": True}
+            for f in fns]
+
+
 def retell_setup(env, webhook_url, trunk):
     headers = {"Authorization": "Bearer " + env["RETELL_API_KEY"]}
     api = "https://api.retellai.com"
@@ -238,16 +253,22 @@ def retell_setup(env, webhook_url, trunk):
     if existing:
         agent_id = existing["agent_id"]
         print(f"✓ Retell agent '{AGENT_NAME}' already exists ({agent_id})")
+        llm_id = (existing.get("response_engine") or {}).get("llm_id")
+        if webhook_url != PLACEHOLDER_WEBHOOK and llm_id:
+            status, r = request("PATCH", f"{api}/update-retell-llm/{llm_id}",
+                                headers=headers,
+                                body={"general_tools": build_tools(webhook_url)})
+            if status in (200, 201):
+                print(f"✓ Updated function webhook URLs → {webhook_url}")
+            else:
+                print(f"! Could not update LLM tool URLs (HTTP {status}): "
+                      f"{json.dumps(r)[:300]}")
     else:
         prompt = PROMPT_FILE.read_text()
-        fns = json.loads(FUNCTIONS_FILE.read_text())["functions"]
-        tools = [{"type": "custom", "name": f["name"], "description": f["description"],
-                  "url": webhook_url, "parameters": f["parameters"],
-                  "speak_during_execution": True, "speak_after_execution": True}
-                 for f in fns]
         status, llm = request("POST", api + "/create-retell-llm", headers=headers,
                               body={"model": "gpt-4.1", "general_prompt": prompt,
-                                    "begin_message": BEGIN_MESSAGE, "general_tools": tools})
+                                    "begin_message": BEGIN_MESSAGE,
+                                    "general_tools": build_tools(webhook_url)})
         if status not in (200, 201):
             die("create Retell LLM", status, llm)
         print(f"✓ Created Retell LLM ({llm['llm_id']})")
@@ -292,19 +313,28 @@ def retell_setup(env, webhook_url, trunk):
 def main():
     env = load_env()
     missing = [k for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER",
-                           "N8N_API_KEY", "N8N_INSTANCE_URL", "RETELL_API_KEY")
-               if not env.get(k)]
+                           "RETELL_API_KEY") if not env.get(k)]
     if missing:
         sys.exit("Missing from .env: " + ", ".join(missing))
+    have_n8n = bool(env.get("N8N_API_KEY") and env.get("N8N_INSTANCE_URL"))
 
     print("--- 1/3 Twilio ---")
     trunk = twilio_setup(env)
     print("\n--- 2/3 n8n ---")
-    webhook_url = n8n_setup(env)
+    if have_n8n:
+        webhook_url = n8n_setup(env)
+    else:
+        webhook_url = PLACEHOLDER_WEBHOOK
+        print("! N8N_API_KEY / N8N_INSTANCE_URL not set — skipping n8n.")
+        print("  Angel's functions will point at a placeholder URL, so booking and")
+        print("  emails won't fire yet. Re-run this script after adding the n8n keys")
+        print("  to .env and it will import the workflow and fix the URLs in place.")
     print("\n--- 3/3 Retell ---")
     retell_setup(env, webhook_url, trunk)
 
     print("\nDone. Remaining manual steps (see docs/SETUP.md):")
+    if not have_n8n:
+        print("  0. Add N8N_API_KEY + N8N_INSTANCE_URL to .env and re-run this script.")
     print("  1. In n8n, open the Calendar + both Gmail nodes and connect Google (OAuth),")
     print("     and set your real calendar ID in 'Create Calendar Event'.")
     print("  2. Call " + env["TWILIO_PHONE_NUMBER"] + " and test the full flow.")
