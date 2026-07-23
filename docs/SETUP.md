@@ -1,8 +1,28 @@
 # Angel Demo — Setup Checklist
 
-Everything in `agent/` and `n8n/` is written and ready. The steps below are
-the parts that need your own accounts and logins — nobody else can do these
-for you, since they need payment details and personal OAuth consent.
+Everything in `agent/` and `n8n/` is written and ready.
+
+## Fast path: the setup script
+
+If you have API keys for Twilio, Retell, and n8n, you can skip almost all of
+the manual clicking below:
+
+1. Copy `.env.example` to `.env` and fill in `TWILIO_ACCOUNT_SID`,
+   `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `RETELL_API_KEY`,
+   `N8N_API_KEY`, and `N8N_INSTANCE_URL`.
+2. Run `python3 scripts/setup.py` (no dependencies needed — pure stdlib).
+
+The script creates the Twilio SIP trunk and attaches your number, imports and
+activates the n8n workflow, creates the Angel agent on Retell with the prompt
+and functions from `agent/`, and imports the number so inbound calls reach
+Angel. It's safe to re-run. The only steps it can't do are the Google OAuth
+connections in n8n (steps 1.3–1.4 below) and a real test call.
+
+## Manual path
+
+The steps below do the same thing by hand — useful if you'd rather see every
+screen, or if the script hits an API change. Account signup and payment
+details are yours to do either way.
 
 ## 1. n8n Cloud (do this first)
 
