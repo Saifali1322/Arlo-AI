@@ -300,7 +300,9 @@ def retell_setup(env, webhook_url, trunk):
                               "termination_uri": trunk["termination_uri"],
                               "sip_trunk_auth_username": trunk["sip_user"],
                               "sip_trunk_auth_password": trunk["sip_pass"],
+                              "transport": "UDP",
                               "inbound_agents": [{"agent_id": agent_id, "weight": 1}],
+                              "outbound_agents": [{"agent_id": agent_id, "weight": 1}],
                               "nickname": "Arlo Angel line"})
     if status in (200, 201):
         print(f"✓ Imported {number} into Retell, inbound → {AGENT_NAME}")
