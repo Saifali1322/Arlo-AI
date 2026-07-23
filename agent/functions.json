@@ -1,0 +1,100 @@
+{
+  "_comment": "Function/tool schemas for Angel. Paste these into Retell's 'Custom Functions' (or 'Tools') section on the agent. Each function's webhook_url should point at your n8n webhook (see n8n/angel-workflow.json). Field names follow OpenAI-style function calling, which Retell and most voice platforms accept directly.",
+  "functions": [
+    {
+      "name": "book_appointment",
+      "description": "Book a 30-minute demo call between the caller and Saif. Call this only after the caller has agreed to a specific day/time and provided their contact details.",
+      "webhook_url": "https://YOUR_N8N_INSTANCE.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "caller_name": {
+            "type": "string",
+            "description": "Full name of the caller"
+          },
+          "business_name": {
+            "type": "string",
+            "description": "Name of the caller's business"
+          },
+          "vertical": {
+            "type": "string",
+            "enum": ["home_services", "dental_aesthetics", "lettings", "other"],
+            "description": "Which target vertical the caller's business falls into"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Caller's phone number in E.164 format where possible"
+          },
+          "email": {
+            "type": "string",
+            "description": "Caller's email address for the calendar invite and confirmation"
+          },
+          "preferred_datetime": {
+            "type": "string",
+            "description": "ISO 8601 datetime the caller agreed to for the 30-minute demo call, in Europe/London time"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Brief context for Saif: pain point mentioned, call volume, anything relevant ahead of the call"
+          }
+        },
+        "required": ["caller_name", "business_name", "phone_number", "email", "preferred_datetime"]
+      }
+    },
+    {
+      "name": "send_confirmation_email",
+      "description": "Send a branded confirmation email to the caller after a demo call has been successfully booked.",
+      "webhook_url": "https://YOUR_N8N_INSTANCE.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "caller_name": {
+            "type": "string",
+            "description": "Full name of the caller"
+          },
+          "email": {
+            "type": "string",
+            "description": "Caller's email address"
+          },
+          "appointment_datetime": {
+            "type": "string",
+            "description": "ISO 8601 datetime of the confirmed demo call, in Europe/London time"
+          }
+        },
+        "required": ["caller_name", "email", "appointment_datetime"]
+      }
+    },
+    {
+      "name": "take_message",
+      "description": "Log a message and notify Saif by email when the caller does not book a demo on the call, or has an urgent issue that needs human follow-up.",
+      "webhook_url": "https://YOUR_N8N_INSTANCE.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "caller_name": {
+            "type": "string",
+            "description": "Full name of the caller, if given"
+          },
+          "business_name": {
+            "type": "string",
+            "description": "Name of the caller's business, if given"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Caller's phone number, if given"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Brief summary of the conversation and what the caller wanted"
+          },
+          "urgency": {
+            "type": "string",
+            "enum": ["low", "normal", "urgent"],
+            "description": "How urgently Saif should follow up"
+          }
+        },
+        "required": ["summary", "urgency"]
+      }
+    }
+  ]
+}

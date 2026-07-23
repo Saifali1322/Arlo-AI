@@ -1,0 +1,25 @@
+{
+  "_comment": "Reference config for the Angel agent on Retell AI. Retell's dashboard/API field names shift between versions, so use this as a checklist of settings to enter in the Retell dashboard rather than a literal import file. The content (prompt, functions, voice) is what matters and is accurate; verify exact field names against Retell's current docs before calling their API directly.",
+  "agent_name": "Angel",
+  "voice_id": "openai-Nova",
+  "voice_language": "en-GB",
+  "response_engine": {
+    "type": "retell-llm",
+    "model": "gpt-4.1",
+    "general_prompt_file": "agent/system-prompt.md",
+    "begin_message": "Thanks for calling Arlo, this is Angel — how can I help you today?"
+  },
+  "functions_file": "agent/functions.json",
+  "ambient_sound": "off",
+  "interruption_sensitivity": 0.8,
+  "responsiveness": 0.9,
+  "enable_backchannel": true,
+  "normalize_for_speech": true,
+  "webhook_url": "https://YOUR_N8N_INSTANCE.app.n8n.cloud/webhook/angel",
+  "availability": {
+    "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+    "hours": "06:00-22:00",
+    "timezone": "Europe/London"
+  },
+  "post_call_notification_email": "saifarshad674@gmail.com"
+}
