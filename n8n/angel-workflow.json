@@ -92,7 +92,7 @@
         "operation": "create",
         "calendar": { "value": "YOUR_CALENDAR_ID", "mode": "list" },
         "start": "={{$json.body.args.preferred_datetime}}",
-        "end": "={{$json.body.args.preferred_datetime}}",
+        "end": "={{ DateTime.fromISO($json.body.args.preferred_datetime).plus({ minutes: 30 }).toISO() }}",
         "additionalFields": {
           "summary": "=Arlo Demo Call — {{$json.body.args.business_name}}",
           "description": "=Caller: {{$json.body.args.caller_name}}\\nBusiness: {{$json.body.args.business_name}}\\nVertical: {{$json.body.args.vertical}}\\nPhone: {{$json.body.args.phone_number}}\\nNotes: {{$json.body.args.notes}}",
