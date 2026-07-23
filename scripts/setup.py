@@ -41,7 +41,7 @@ WORKFLOW_FILE = REPO_ROOT / "n8n" / "angel-workflow.json"
 PROMPT_FILE = REPO_ROOT / "agent" / "system-prompt.md"
 FUNCTIONS_FILE = REPO_ROOT / "agent" / "functions.json"
 BEGIN_MESSAGE = "Thanks for calling Arlo, this is Angel — how can I help you today?"
-VOICE_ID = "openai-Nova"  # falls back to first available openai voice if rejected
+VOICE_ID = "11labs-Amy"  # young British female, ElevenLabs — most humanlike
 PLACEHOLDER_WEBHOOK = "https://placeholder.invalid/webhook/angel"
 
 
@@ -275,7 +275,10 @@ def retell_setup(env, webhook_url, trunk):
 
         agent_body = {"agent_name": AGENT_NAME, "voice_id": VOICE_ID, "language": "en-GB",
                       "response_engine": {"type": "retell-llm", "llm_id": llm["llm_id"]},
-                      "enable_backchannel": True}
+                      "enable_backchannel": True, "backchannel_frequency": 0.8,
+                      "backchannel_words": ["mm-hmm", "right", "okay", "I see"],
+                      "interruption_sensitivity": 1, "responsiveness": 1,
+                      "voice_temperature": 1, "normalize_for_speech": True}
         status, agent = request("POST", api + "/create-agent", headers=headers, body=agent_body)
         if status not in (200, 201) and "voice" in json.dumps(agent).lower():
             status_v, voices = request("GET", api + "/list-voices", headers=headers)
