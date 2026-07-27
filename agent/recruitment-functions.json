@@ -1,0 +1,216 @@
+{
+  "_comment": "Tool schemas for a white-labelled recruitment agency agent. Separate from agent/functions.json (the generic small-business set) and from the Angel outbound demo agent. Every url points at the agency's own n8n webhook, set per client at build time.",
+  "_webhook_placeholder": "https://arlo111.app.n8n.cloud/webhook/angel",
+
+  "tools": [
+    {
+      "type": "custom",
+      "name": "take_vacancy",
+      "description": "A CLIENT is ringing in a new job to fill. This is the highest-value call the agency receives - a single vacancy is worth a full placement fee - so capture it properly and never let the caller hang up without it logged. Use when a client company describes a role they need filling. Read the salary, location and start date back before logging.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name":    { "type": "string", "description": "Name of the person calling from the client company" },
+          "company":         { "type": "string", "description": "Client company name" },
+          "phone":           { "type": "string", "description": "Best contact number, read back and confirmed" },
+          "email":           { "type": "string", "description": "Contact email if given" },
+          "job_title":       { "type": "string", "description": "Role to be filled" },
+          "contract_type":   { "type": "string", "description": "Type of engagement", "enum": ["permanent", "temporary", "contract", "fixed_term", "unsure"] },
+          "headcount":       { "type": "integer", "description": "How many people they need" },
+          "salary_or_rate":  { "type": "string", "description": "Salary range or hourly/day rate as stated by the client" },
+          "location":        { "type": "string", "description": "Site or work location, and whether remote/hybrid" },
+          "start_date":      { "type": "string", "description": "When they need someone to start" },
+          "key_requirements":{ "type": "string", "description": "Must-have skills, tickets, certifications or experience" },
+          "urgency":         { "type": "string", "description": "How soon they need this filled", "enum": ["standard", "priority", "urgent"] },
+          "summary":         { "type": "string", "description": "Everything else the client said that a consultant would want before calling back" }
+        },
+        "required": ["company", "job_title", "phone", "summary", "urgency"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "qualify_candidate",
+      "description": "A CANDIDATE is calling about a role, or responding to an advert. Screen them and log the result so a consultant only speaks to people worth speaking to. Ask questions conversationally, one at a time - never read this list out as a form. Do not reject anyone on the call; log what you learn and let a consultant decide.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_name":     { "type": "string", "description": "Full name" },
+          "phone":              { "type": "string", "description": "Best number, read back and confirmed" },
+          "email":              { "type": "string", "description": "Email if given" },
+          "role_sought":        { "type": "string", "description": "The job they are calling about, or the type of work they want" },
+          "current_situation":  { "type": "string", "description": "Current role and employer, or whether they are out of work" },
+          "experience_summary": { "type": "string", "description": "Relevant experience, skills, tickets or certifications" },
+          "salary_expectation": { "type": "string", "description": "What they are looking to earn" },
+          "location":           { "type": "string", "description": "Where they live and how far they will travel" },
+          "notice_period":      { "type": "string", "description": "Notice period, or availability to start" },
+          "right_to_work":      { "type": "string", "description": "Whether they confirmed they have the right to work in the UK", "enum": ["confirmed", "not_confirmed", "not_asked", "needs_sponsorship"] },
+          "source":             { "type": "string", "description": "Where they saw the role - job board, referral, social, other" },
+          "summary":            { "type": "string", "description": "How they came across and anything a consultant should know before ringing them" }
+        },
+        "required": ["candidate_name", "phone", "role_sought", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "log_shift_request",
+      "description": "URGENT temp cover. A client is short-staffed and needs workers on site, often at very short notice, or a worker has called in sick. Time-critical - log this immediately and alert the on-call consultant. Common on healthcare, industrial and hospitality temp desks, and frequently outside office hours.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "caller_name":    { "type": "string", "description": "Who is calling" },
+          "company":        { "type": "string", "description": "Client company" },
+          "site":           { "type": "string", "description": "Site or ward or address the workers are needed at" },
+          "phone":          { "type": "string", "description": "Callback number, read back and confirmed" },
+          "role_needed":    { "type": "string", "description": "Type of worker needed, including any required ticket or certification" },
+          "workers_needed": { "type": "integer", "description": "How many workers" },
+          "shift_start":    { "type": "string", "description": "When the shift starts" },
+          "shift_end":      { "type": "string", "description": "When the shift ends" },
+          "is_sickness_cover": { "type": "boolean", "description": "True if this is covering someone who has called in sick" },
+          "summary":        { "type": "string", "description": "Anything else the consultant needs to fill this" }
+        },
+        "required": ["company", "role_needed", "workers_needed", "shift_start", "phone", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "book_appointment",
+      "description": "Book a registration call, an interview, or a client meeting into a consultant's diary. Always offer specific times rather than asking open-endedly, read the final time back, and only confirm to the caller once this returns success.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_type": { "type": "string", "description": "What is being booked", "enum": ["candidate_registration", "interview", "client_meeting", "callback"] },
+          "attendee_name":    { "type": "string", "description": "Name of the candidate or client" },
+          "phone":            { "type": "string", "description": "Contact number, read back and confirmed" },
+          "email":            { "type": "string", "description": "Email for the calendar invite" },
+          "datetime":         { "type": "string", "description": "Agreed date and time in ISO 8601 format" },
+          "duration_minutes": { "type": "integer", "description": "Length in minutes. Default 30 for registrations, 60 for interviews" },
+          "consultant":       { "type": "string", "description": "Which consultant the appointment is with" },
+          "role_context":     { "type": "string", "description": "The vacancy or role this relates to" },
+          "notes":            { "type": "string", "description": "Anything the consultant should know before the meeting" }
+        },
+        "required": ["appointment_type", "attendee_name", "phone", "datetime"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "check_application_status",
+      "description": "A candidate is chasing an application or interview feedback. Never invent a status, never guess, and never promise an outcome. Log the chase, tell them a consultant will come back to them, and say when.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_name":    { "type": "string", "description": "Full name" },
+          "phone":             { "type": "string", "description": "Contact number" },
+          "role_applied_for":  { "type": "string", "description": "The role or reference they are asking about" },
+          "applied_when":      { "type": "string", "description": "Roughly when they applied or last heard anything" },
+          "sentiment":         { "type": "string", "description": "How the candidate sounds - matters for how fast someone rings back", "enum": ["relaxed", "keen", "frustrated"] },
+          "summary":           { "type": "string", "description": "What they asked and anything a consultant should know" }
+        },
+        "required": ["candidate_name", "phone", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "log_availability_check",
+      "description": "Result of an OUTBOUND call to a candidate or contractor - database reactivation, availability check, or a temp pool sweep for a shift. Records whether they are looking or available so consultants only chase live ones.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_name": { "type": "string", "description": "Who was called" },
+          "phone":          { "type": "string", "description": "Number called" },
+          "outcome":        { "type": "string", "description": "Result of the call", "enum": ["actively_looking", "open_to_offers", "not_looking", "available_for_shift", "unavailable", "do_not_contact", "no_answer"] },
+          "available_from": { "type": "string", "description": "When they could start, if applicable" },
+          "role_sought":    { "type": "string", "description": "What they are looking for now, if it has changed" },
+          "salary_expectation": { "type": "string", "description": "Updated salary or rate expectation" },
+          "summary":        { "type": "string", "description": "What they said, and whether a consultant should ring them" }
+        },
+        "required": ["candidate_name", "phone", "outcome", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "log_admin_chase",
+      "description": "Result of chasing a timesheet, reference, or compliance document such as a DBS, right-to-work check or certification. Used on outbound admin sweeps that would otherwise eat consultant hours.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": { "type": "string", "description": "Who was chased" },
+          "phone":        { "type": "string", "description": "Number called" },
+          "chase_type":   { "type": "string", "description": "What was being chased", "enum": ["timesheet", "reference", "dbs", "right_to_work", "certification", "other_document"] },
+          "outcome":      { "type": "string", "description": "Result", "enum": ["will_send_today", "already_sent", "needs_help", "refused", "no_answer"] },
+          "promised_by":  { "type": "string", "description": "When they said they would send it" },
+          "summary":      { "type": "string", "description": "What they said" }
+        },
+        "required": ["contact_name", "chase_type", "outcome", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "escalate_to_consultant",
+      "description": "Hand off to a human now. Use for an angry client, a complaint, anything about pay disputes, a safeguarding or safety concern, a legal threat, or any situation where getting it wrong would cost the agency the relationship. Do not attempt to resolve these yourself - escalate early rather than late.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "caller_name": { "type": "string", "description": "Who is calling" },
+          "company":     { "type": "string", "description": "Their company, if a client" },
+          "phone":       { "type": "string", "description": "Callback number" },
+          "reason":      { "type": "string", "description": "Why this needs a human", "enum": ["complaint", "pay_dispute", "safeguarding", "safety_incident", "legal", "angry_client", "other"] },
+          "urgency":     { "type": "string", "description": "How fast someone must ring back", "enum": ["today", "within_hour", "immediately"] },
+          "summary":     { "type": "string", "description": "What happened, in the caller's own words where possible" }
+        },
+        "required": ["caller_name", "phone", "reason", "urgency", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "take_message",
+      "description": "Catch-all for anything that does not fit the other tools. Prefer a specific tool where one applies - a vacancy should always be take_vacancy, not this.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/angel",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "caller_name": { "type": "string", "description": "Who called" },
+          "company":     { "type": "string", "description": "Their company if relevant" },
+          "phone":       { "type": "string", "description": "Callback number, read back and confirmed" },
+          "caller_type": { "type": "string", "description": "Which side of the desk they are on", "enum": ["candidate", "client", "supplier", "other"] },
+          "urgency":     { "type": "string", "description": "How urgently to respond", "enum": ["low", "normal", "urgent"] },
+          "summary":     { "type": "string", "description": "What they wanted" }
+        },
+        "required": ["summary", "urgency"]
+      }
+    }
+  ]
+}
