@@ -4,9 +4,11 @@
   "_live_line": "0203 432 8551",
 
   "agent_name": "Ellie — Free Business Registration",
-  "voice_id": "11labs-Amy",
+  "voice_id": "11labs-Willa",
   "voice_language": "en-GB",
-  "voice_speed": 1.05,
+  "voice_speed": 1.02,
+  "voice_temperature": 0.9,
+  "_voice_note": "Willa is middle-aged British — carries the authority a founder needs when handing over their company details. Amy(UK) reads young and sales-y on this call type. Alternatives worth an A/B: cartesia-Willa (lower latency), cartesia-Eve, 11labs-Dorothy (younger, warmer).",
 
   "response_engine": {
     "type": "retell-llm",

@@ -113,6 +113,7 @@ def main() -> None:
         "voice_id": cfg["voice_id"],
         "language": cfg["voice_language"],
         "voice_speed": cfg.get("voice_speed", 1.0),
+        "voice_temperature": cfg.get("voice_temperature", 1.0),
         "response_engine": {"type": "retell-llm", "llm_id": llm_id},
         "ambient_sound": None if cfg.get("ambient_sound") == "off" else cfg.get("ambient_sound"),
         "interruption_sensitivity": cfg["interruption_sensitivity"],

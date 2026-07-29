@@ -1,0 +1,89 @@
+{
+  "name": "Ellie — Free Business Registration",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Ellie — Free Business Registration\n\nReceives every tool call from the Retell agent and emails the team.\n\n**Setup (2 minutes):**\n1. Connect a Gmail account on the **Email the Team** node.\n2. Change `TEAM_INBOX` in the **Format Call Event** node if it should go somewhere other than Saif.\n3. Toggle the workflow **Active** (top right). The webhook is only live when active.\n\nProduction URL ends `/webhook/fbr` — it must match the `url` in\n`agent/clients/free-business-registration/functions.json`.\n\nOne handler covers all seven tools, so adding a tool needs no change here.",
+        "height": 340,
+        "width": 420
+      },
+      "id": "note-setup",
+      "name": "Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-160, 40]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fbr",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-fbr",
+      "name": "Ellie Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [300, 200],
+      "webhookId": "fbr-inbound"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Where the call summaries land. Swap for hello@freebusinessregistration.com\n// once FBR is a live client rather than a demo.\nconst TEAM_INBOX = 'saifarshad674@gmail.com';\n\n// Retell has shifted this payload shape between versions, so read defensively.\nconst body = $input.first().json.body ?? $input.first().json;\nconst tool = body.name ?? body.function_name ?? body.tool_name ?? 'unknown_tool';\nconst args = body.args ?? body.arguments ?? body.parameters ?? {};\nconst call = body.call ?? {};\n\n// What each tool means to a human reading the subject line at 7am.\nconst LABELS = {\n  start_registration:        ['NEW REGISTRATION', 'Formations'],\n  log_service_interest:      ['SERVICE INTEREST', 'Sales'],\n  book_callback:             ['CALLBACK BOOKED', 'Sales'],\n  check_registration_status: ['STATUS CHASE', 'Formations'],\n  support_request:           ['SUPPORT', 'Support'],\n  escalate_to_human:         ['ESCALATION', 'Manager'],\n  take_message:              ['MESSAGE', 'Reception'],\n};\nconst [label, team] = LABELS[tool] ?? ['CALL', 'Reception'];\n\n// Anything the agent flagged as hot goes to the top of the subject line.\nconst hot = args.urgency === 'immediately'\n  || args.urgency === 'within_hour'\n  || args.urgency === 'urgent'\n  || args.temperature === 'ready_now'\n  || args.sentiment === 'frustrated'\n  || tool === 'escalate_to_human';\n\nconst who = args.full_name || args.contact_name || args.candidate_name || 'Unknown caller';\nconst subject = `${hot ? '[URGENT] ' : ''}${label} — ${who}`;\n\n// Print every field the agent captured, in a readable order, without\n// inventing any it did not send.\nconst pretty = (k) => k.replace(/_/g, ' ').replace(/^\\w/, (c) => c.toUpperCase());\n\n// The service enum is machine-shaped. Nobody should have to read\n// \"5_page_website_399\" over their morning coffee.\nconst SERVICES = {\n  '5_page_website_399': '5 Page Website (\\u00a3399)',\n  ecommerce_website_999: 'E-Commerce Website (\\u00a3999)',\n  email_domain_setup_50: 'Email & Domain Setup (\\u00a350)',\n  branding_package_299: 'Branding Package (\\u00a3299)',\n  graphic_design_bundle_199: 'Graphic Design Bundle (\\u00a3199)',\n  promotional_video_99: 'Promotional Video (\\u00a399)',\n  promotional_video_bundle_299: 'Promotional Video Bundle (\\u00a3299)',\n  social_bronze_199_mo: 'Social Media Bronze (\\u00a3199/mo)',\n  social_silver_299_mo: 'Social Media Silver (\\u00a3299/mo)',\n  social_gold_399_mo: 'Social Media Gold (\\u00a3399/mo)',\n  social_vip_499_mo: 'Social Media VIP (\\u00a3499/mo)',\n  seo_bronze_99_mo: 'Bronze SEO (\\u00a399/mo)',\n  seo_silver_199_mo: 'Silver SEO (\\u00a3199/mo)',\n  seo_gold_299_mo: 'Gold SEO (\\u00a3299/mo)',\n  seo_vip_499_mo: 'VIP SEO (\\u00a3499/mo)',\n  appointment_setting_3000_mo: 'Outsourced Appointment Setting (\\u00a33,000/mo)',\n  business_starter_pack_799: 'Business Starter Pack (\\u00a3799)',\n  premium_starter_pack_1999: 'Premium Starter Pack (\\u00a31,999)',\n  ultimate_starter_pack_4999: 'Ultimate Starter Pack (\\u00a34,999)',\n  undecided: 'Undecided',\n};\nconst value = (k, v) => {\n  if (k === 'service') return SERVICES[v] ?? v;\n  if (typeof v === 'boolean') return v ? 'yes' : 'no';\n  if (typeof v === 'string' && /^[a-z]+(_[a-z0-9]+)+$/.test(v)) return v.replace(/_/g, ' ');\n  return v;\n};\n\nconst ORDER = ['full_name', 'contact_name', 'phone', 'email', 'company_name'];\nconst keys = [\n  ...ORDER.filter((k) => args[k] !== undefined && args[k] !== ''),\n  ...Object.keys(args).filter((k) => !ORDER.includes(k) && args[k] !== undefined && args[k] !== ''),\n];\nconst lines = keys.map((k) => `${pretty(k)}: ${value(k, args[k])}`);\n\nconst text = [\n  `${label}  —  route to: ${team}`,\n  '',\n  ...lines,\n  '',\n  '—',\n  `Tool: ${tool}`,\n  call.call_id ? `Call ID: ${call.call_id}` : null,\n  call.from_number ? `From: ${call.from_number}` : null,\n  `Logged: ${new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' })}`,\n].filter(Boolean).join('\\n');\n\n// Ellie speaks this back to the caller, so it has to sound like a person.\n// Never phrase it as a system status.\nconst REPLIES = {\n  start_registration:        \"That's with the formations team now.\",\n  log_service_interest:      \"That's over to the team now.\",\n  book_callback:             \"That's in the diary.\",\n  check_registration_status: \"I've flagged that for someone to check.\",\n  support_request:           \"That's logged with support now.\",\n  escalate_to_human:         \"I've put that straight through to a manager.\",\n  take_message:              \"That's passed on now.\",\n};\n\nreturn [{ json: { to: TEAM_INBOX, subject, text, reply: REPLIES[tool] ?? 'That\\u2019s logged now.' } }];"
+      },
+      "id": "format-event",
+      "name": "Format Call Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 200]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {}
+      },
+      "id": "email-team",
+      "name": "Email the Team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [780, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: $('Format Call Event').item.json.reply }) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Ellie",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1020, 200]
+    }
+  ],
+  "connections": {
+    "Ellie Webhook": {
+      "main": [[{ "node": "Format Call Event", "type": "main", "index": 0 }]]
+    },
+    "Format Call Event": {
+      "main": [[{ "node": "Email the Team", "type": "main", "index": 0 }]]
+    },
+    "Email the Team": {
+      "main": [[{ "node": "Respond to Ellie", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
