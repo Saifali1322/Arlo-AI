@@ -168,6 +168,12 @@
     },
 
     {
+      "type": "end_call",
+      "name": "end_call",
+      "description": "Hang up. Call this whenever the conversation is genuinely finished - you have said your one closing line, or the caller has said goodbye, or they have said they are not interested and you have acknowledged it, or it is a wrong number. Say your sign-off first, then call this immediately; do not wait for the caller to hang up and do not add a second goodbye. Never call this while the caller still has a question, mid-sentence, or before a tool you have promised them has returned."
+    },
+
+    {
       "type": "custom",
       "name": "take_message",
       "description": "Catch-all for anything that does not fit the other tools - suppliers, partnership enquiries, press, recruitment, wrong numbers worth logging. Always prefer a specific tool where one applies: someone registering a company is always start_registration, never this.",

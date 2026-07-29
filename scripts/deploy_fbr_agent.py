@@ -72,7 +72,9 @@ def build_tools(webhook_url: str) -> list:
     tools = []
     for t in spec["tools"]:
         tool = {k: v for k, v in t.items() if not k.startswith("_")}
-        tool["url"] = webhook_url
+        # Built-in tools like end_call are handled by Retell and take no webhook.
+        if tool.get("type") == "custom":
+            tool["url"] = webhook_url
         tools.append(tool)
     return tools
 
