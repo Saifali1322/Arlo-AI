@@ -12,9 +12,10 @@
   "_voice_model_note": "eleven_flash_v2 is ElevenLabs' ENGLISH-ONLY model and must stay that way. The multilingual models (eleven_flash_v2_5, eleven_multilingual_v2) drift a British voice towards American mid-call, which is what made the first demo sound wrong. English-only also has the lowest latency of the three.",
   "response_engine": {
     "type": "retell-llm",
-    "model": "gpt-4.1",
+    "model": "claude-5-sonnet",
     "general_prompt_file": "agent/clients/free-business-registration/inbound-prompt.md",
-    "begin_message": "Free Business Registration, Ellie speaking — are you registering a company, or calling about one you've already got with us?"
+    "begin_message": "Free Business Registration, Ellie speaking — are you registering a company, or calling about one you've already got with us?",
+    "_model_note": "Switched off gpt-4.1 after the first demo call: it invented the caller's name, confirmed a garbled name, skipped the mandatory next-need question and claimed a capability it did not have. Every one of those is an instruction-following failure on a long prompt, which is what this model is stronger at."
   },
   "functions_file": "agent/clients/free-business-registration/functions.json",
   "ambient_sound": "off",

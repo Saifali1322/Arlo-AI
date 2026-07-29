@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Ellie — Free Business Registration\n\nReceives every tool call from the Retell agent and emails the team.\n\n**Setup (2 minutes):**\n1. Connect a Gmail account on the **Email the Team** node.\n2. Change `TEAM_INBOX` in the **Format Call Event** node if it should go somewhere other than Saif.\n3. Toggle the workflow **Active** (top right). The webhook is only live when active.\n\nProduction URL ends `/webhook/fbr` — it must match the `url` in\n`agent/clients/free-business-registration/functions.json`.\n\nOne handler covers all seven tools, so adding a tool needs no change here.",
+        "content": "## Ellie — Free Business Registration\n\nReceives every tool call from the Retell agent and emails the team.\n\n**Setup (2 minutes):**\n1. Connect a Gmail account on the **Email the Team** node.\n2. Change `TEAM_INBOX` in the **Format Call Event** node if it should go somewhere other than Saif.\n3. Toggle the workflow **Active** (top right). The webhook is only live when active.\n\nProduction URL ends `/webhook/fbr` — it must match the `url` in\n`agent/clients/free-business-registration/functions.json`.\n\nOne handler covers all seven tools, so adding a tool needs no change here.\n\nThe reply goes back to Ellie **before** the email is sent — Gmail can take\na few seconds, and Retell retries a tool call that is slow to answer,\nwhich sends the same email more than once.",
         "height": 340,
         "width": 420
       },
@@ -11,7 +11,10 @@
       "name": "Setup Notes",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-160, 40]
+      "position": [
+        -160,
+        40
+      ]
     },
     {
       "parameters": {
@@ -24,7 +27,10 @@
       "name": "Ellie Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [300, 200],
+      "position": [
+        300,
+        200
+      ],
       "webhookId": "fbr-inbound"
     },
     {
@@ -35,21 +41,27 @@
       "name": "Format Call Event",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [540, 200]
+      "position": [
+        540,
+        200
+      ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.to }}",
-        "subject": "={{ $json.subject }}",
+        "sendTo": "={{ $('Format Call Event').item.json.to }}",
+        "subject": "={{ $('Format Call Event').item.json.subject }}",
         "emailType": "text",
-        "message": "={{ $json.text }}",
+        "message": "={{ $('Format Call Event').item.json.text }}",
         "options": {}
       },
       "id": "email-team",
       "name": "Email the Team",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [780, 200],
+      "position": [
+        1020,
+        200
+      ],
       "credentials": {
         "gmailOAuth2": {
           "id": "REPLACE_ME",
@@ -61,25 +73,52 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: $('Format Call Event').item.json.reply }) }}",
+        "responseBody": "={{ JSON.stringify({ success: true, message: $json.reply }) }}",
         "options": {}
       },
       "id": "respond",
       "name": "Respond to Ellie",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1020, 200]
+      "position": [
+        780,
+        200
+      ]
     }
   ],
   "connections": {
     "Ellie Webhook": {
-      "main": [[{ "node": "Format Call Event", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Call Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Format Call Event": {
-      "main": [[{ "node": "Email the Team", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond to Ellie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Email the Team": {
-      "main": [[{ "node": "Respond to Ellie", "type": "main", "index": 0 }]]
+    "Respond to Ellie": {
+      "main": [
+        [
+          {
+            "node": "Email the Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
