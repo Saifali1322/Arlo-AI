@@ -9,7 +9,7 @@ All under 45s, phone-shot, hook lands in the first 2 seconds. Film in order —
 
 **Hook (0-2s):** You, phone to your ear, straight to camera: *"Watch what happens when I call my own business."*
 
-**Action:** Dial +1 608 946 0425 on speaker. Let Angel actually answer and talk for real — don't cut it.
+**Action:** Dial +44 7447 186925 on speaker. Let Angel actually answer and talk for real — don't cut it.
 
 **On-screen text overlay (appears as she answers):** "This is AI. Not a person."
 

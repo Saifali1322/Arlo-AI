@@ -31,5 +31,6 @@ it, books it, and summarises it for the owner.
 ## Dev
 
 - Work on branch `claude/arlo-voice-agent-demo-8jtj0s`.
-- Live demo number: +1 608 946 0425 (US placeholder; UK number pending a
-  Twilio regulatory bundle).
+- Live demo number: **+44 7447 186925** (UK mobile, on the approved
+  "Saif" regulatory bundle). Replaced the old US placeholder, which was
+  released. Same Twilio trunk, same Retell routing.
