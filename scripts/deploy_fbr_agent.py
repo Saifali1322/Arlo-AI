@@ -111,6 +111,8 @@ def main() -> None:
     agent_body = {
         "agent_name": cfg["agent_name"],
         "voice_id": cfg["voice_id"],
+        # English-only TTS model — the multilingual ones drift the accent.
+        "voice_model": cfg.get("voice_model"),
         "language": cfg["voice_language"],
         "voice_speed": cfg.get("voice_speed", 1.0),
         "voice_temperature": cfg.get("voice_temperature", 1.0),

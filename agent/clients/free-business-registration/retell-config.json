@@ -5,10 +5,12 @@
 
   "agent_name": "Ellie — Free Business Registration",
   "voice_id": "11labs-Willa",
+  "voice_model": "eleven_flash_v2",
   "voice_language": "en-GB",
   "voice_speed": 1.02,
   "voice_temperature": 0.9,
-  "_voice_note": "Willa is middle-aged British — carries the authority a founder needs when handing over their company details. Amy(UK) reads young and sales-y on this call type. Alternatives worth an A/B: cartesia-Willa (lower latency), cartesia-Eve, 11labs-Dorothy (younger, warmer).",
+  "_voice_note": "Willa is middle-aged British — carries the authority a founder needs when handing over their company details. Amy(UK) reads young and sales-y on this call type.",
+  "_voice_model_note": "eleven_flash_v2 is ElevenLabs' ENGLISH-ONLY model and must stay that way. The multilingual models (eleven_flash_v2_5, eleven_multilingual_v2) drift a British voice towards American mid-call, which is what made the first demo sound wrong. English-only also has the lowest latency of the three.",
 
   "response_engine": {
     "type": "retell-llm",
