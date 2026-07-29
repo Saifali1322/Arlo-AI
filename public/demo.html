@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voice agent demo — Free Business Registration</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --line: #262b36;
+    --text: #e8eaef;
+    --muted: #8b93a5;
+    --accent: #4ade80;
+    --caller: #3b82f6;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 32px 16px;
+  }
+  header { max-width: 720px; width: 100%; margin-bottom: 24px; }
+  h1 { font-size: 22px; margin: 0 0 6px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  main { max-width: 720px; width: 100%; display: flex; flex-direction: column; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 550; border: 0; border-radius: 8px; padding: 11px 20px;
+    cursor: pointer; transition: opacity .15s, background .15s;
+  }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  #call { background: var(--accent); color: #06240f; }
+  #hangup { background: var(--danger); color: #2b0808; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.live { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+  .dot.speaking { background: var(--caller); }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+  #transcript { display: flex; flex-direction: column; gap: 12px; min-height: 220px; max-height: 46vh; overflow-y: auto; }
+  .turn { display: flex; flex-direction: column; gap: 3px; }
+  .who { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .turn.agent .who { color: var(--accent); }
+  .turn.caller .who { color: var(--caller); }
+  .what { white-space: pre-wrap; }
+  .empty { color: var(--muted); font-style: italic; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0; }
+  .hint code { background: #0b0d11; padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  a { color: var(--accent); }
+  .err { color: var(--danger); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Inbound voice agent — live demo</h1>
+  <p class="sub">Same prompt, same tools, same model as the phone line. Only the audio transport differs.</p>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="controls">
+      <button id="call">Start call</button>
+      <button id="hangup" disabled>Hang up</button>
+      <div class="status"><span class="dot" id="dot"></span><span id="status">Ready</span></div>
+    </div>
+    <p class="err" id="error" hidden></p>
+  </div>
+
+  <div class="panel">
+    <div id="transcript"><p class="empty">Transcript will appear here.</p></div>
+  </div>
+
+  <div class="panel">
+    <p class="hint">
+      Try: <em>“I want to register a company called Royal Trust Holdings”</em> — the agent catches two
+      sensitive words before you waste the call. Then try interrupting it mid-sentence.
+      Captured details land in <a href="/leads">the leads dashboard</a>.
+    </p>
+  </div>
+</main>
+
+<script type="module">
+const SAMPLE_RATE = 16000;
+
+const els = {
+  call: document.getElementById('call'),
+  hangup: document.getElementById('hangup'),
+  status: document.getElementById('status'),
+  dot: document.getElementById('dot'),
+  transcript: document.getElementById('transcript'),
+  error: document.getElementById('error'),
+};
+
+let socket, captureCtx, playbackCtx, micStream, workletNode;
+let scheduledSources = [];
+let nextPlayTime = 0;
+
+/** Inline worklet: float32 mic frames -> PCM16, posted to the main thread. */
+const workletSource = `
+class PcmCapture extends AudioWorkletProcessor {
+  process(inputs) {
+    const channel = inputs[0] && inputs[0][0];
+    if (!channel) return true;
+    const pcm = new Int16Array(channel.length);
+    for (let i = 0; i < channel.length; i++) {
+      const s = Math.max(-1, Math.min(1, channel[i]));
+      pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    this.port.postMessage(pcm, [pcm.buffer]);
+    return true;
+  }
+}
+registerProcessor('pcm-capture', PcmCapture);
+`;
+
+function setStatus(text, mode) {
+  els.status.textContent = text;
+  els.dot.className = 'dot' + (mode ? ' ' + mode : '');
+}
+
+function showError(message) {
+  els.error.textContent = message;
+  els.error.hidden = false;
+}
+
+function addTurn(role, text) {
+  const empty = els.transcript.querySelector('.empty');
+  if (empty) empty.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'turn ' + role;
+  const who = document.createElement('div');
+  who.className = 'who';
+  who.textContent = role === 'agent' ? 'Agent' : 'You';
+  const what = document.createElement('div');
+  what.className = 'what';
+  what.textContent = text;
+  wrap.append(who, what);
+  els.transcript.append(wrap);
+  els.transcript.scrollTop = els.transcript.scrollHeight;
+}
+
+/** Drop everything queued for playback — the server's barge-in signal. */
+function clearPlayback() {
+  for (const source of scheduledSources) {
+    try { source.stop(); } catch {}
+  }
+  scheduledSources = [];
+  nextPlayTime = 0;
+}
+
+function playPcm(arrayBuffer) {
+  if (!playbackCtx) return;
+  const pcm = new Int16Array(arrayBuffer);
+  if (pcm.length === 0) return;
+
+  const buffer = playbackCtx.createBuffer(1, pcm.length, SAMPLE_RATE);
+  const channel = buffer.getChannelData(0);
+  for (let i = 0; i < pcm.length; i++) channel[i] = pcm[i] / 0x8000;
+
+  const source = playbackCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(playbackCtx.destination);
+
+  // Schedule back-to-back so chunks play gaplessly; a small lead-in absorbs jitter.
+  const now = playbackCtx.currentTime;
+  const startAt = Math.max(now + 0.02, nextPlayTime);
+  source.start(startAt);
+  nextPlayTime = startAt + buffer.duration;
+
+  scheduledSources.push(source);
+  source.onended = () => {
+    scheduledSources = scheduledSources.filter((s) => s !== source);
+  };
+  setStatus('Agent speaking', 'speaking');
+}
+
+async function startCall() {
+  els.error.hidden = true;
+  els.call.disabled = true;
+  setStatus('Connecting…');
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch {
+    showError('Microphone access denied. Allow it and try again.');
+    els.call.disabled = false;
+    setStatus('Ready');
+    return;
+  }
+
+  captureCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+  playbackCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+  await captureCtx.resume();
+  await playbackCtx.resume();
+
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  socket = new WebSocket(`${protocol}//${location.host}/browser`);
+  socket.binaryType = 'arraybuffer';
+
+  socket.addEventListener('open', async () => {
+    const blobUrl = URL.createObjectURL(new Blob([workletSource], { type: 'application/javascript' }));
+    await captureCtx.audioWorklet.addModule(blobUrl);
+    URL.revokeObjectURL(blobUrl);
+
+    workletNode = new AudioWorkletNode(captureCtx, 'pcm-capture');
+    workletNode.port.onmessage = (event) => {
+      if (socket?.readyState === WebSocket.OPEN) socket.send(event.data.buffer);
+    };
+    captureCtx.createMediaStreamSource(micStream).connect(workletNode);
+    // Keep the worklet pulled by the graph without routing mic audio to speakers.
+    const sink = captureCtx.createGain();
+    sink.gain.value = 0;
+    workletNode.connect(sink).connect(captureCtx.destination);
+
+    els.hangup.disabled = false;
+    setStatus('Listening', 'live');
+  });
+
+  socket.addEventListener('message', (event) => {
+    if (event.data instanceof ArrayBuffer) {
+      playPcm(event.data);
+      return;
+    }
+    let message;
+    try { message = JSON.parse(event.data); } catch { return; }
+
+    if (message.type === 'clear') {
+      clearPlayback();
+      setStatus('Listening', 'live');
+    } else if (message.type === 'transcript') {
+      addTurn(message.role, message.text);
+      if (message.role === 'caller') setStatus('Thinking…', 'live');
+    } else if (message.type === 'transfer') {
+      addTurn('agent', `[transferring to a human — ${message.reason}]`);
+    } else if (message.type === 'ended') {
+      setStatus('Call ended');
+    }
+  });
+
+  socket.addEventListener('close', () => endCall(false));
+  socket.addEventListener('error', () => showError('Connection failed. Is the server running?'));
+}
+
+function endCall(notifyServer = true) {
+  if (notifyServer && socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'stop' }));
+  }
+  clearPlayback();
+  workletNode?.disconnect();
+  micStream?.getTracks().forEach((track) => track.stop());
+  captureCtx?.close();
+  playbackCtx?.close();
+  socket?.close();
+  socket = captureCtx = playbackCtx = micStream = workletNode = undefined;
+
+  els.call.disabled = false;
+  els.hangup.disabled = true;
+  setStatus('Call ended');
+}
+
+els.call.addEventListener('click', startCall);
+els.hangup.addEventListener('click', () => endCall(true));
+</script>
+</body>
+</html>

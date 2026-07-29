@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Captured registrations</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b36;
+    --text: #e8eaef; --muted: #8b93a5; --accent: #4ade80;
+    --caller: #3b82f6; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); padding: 32px 16px;
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  a { color: var(--accent); }
+  .lead { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .name { font-size: 17px; font-weight: 600; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+         padding: 3px 8px; border-radius: 5px; background: #232833; color: var(--muted); }
+  .tag.done { background: #10321d; color: var(--accent); }
+  .tag.partial { background: #3a2f10; color: var(--warn); }
+  dl { display: grid; grid-template-columns: 190px 1fr; gap: 6px 16px; margin: 0 0 12px; font-size: 14px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; word-break: break-word; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .turn { margin: 8px 0; font-size: 14px; }
+  .turn b { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .turn.agent b { color: var(--accent); }
+  .turn.caller b { color: var(--caller); }
+  .empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Captured registrations</h1>
+  <p class="sub">
+    Everything the agent captured, live. Field names match the web form at /register one-for-one.
+    <a href="/demo">Back to the demo</a> · refreshes every 3s
+  </p>
+  <div id="list"><p class="empty">Loading…</p></div>
+</div>
+
+<script type="module">
+const FIELDS = [
+  ['companyName', 'Company name'],
+  ['businessDescription', 'Business description'],
+  ['sicCode', 'SIC code'],
+  ['sicDescription', 'SIC description'],
+  ['title', 'Title'],
+  ['firstName', 'First name'],
+  ['middleNames', 'Middle name(s)'],
+  ['lastName', 'Last name'],
+  ['email', 'Email'],
+  ['phone', 'Phone'],
+  ['nationality', 'Nationality'],
+  ['termsAccepted', 'Terms accepted'],
+  ['idvStatus', 'ID verification'],
+  ['interestedServices', 'Interested in'],
+  ['callbackRequested', 'Callback'],
+  ['notes', 'Notes'],
+];
+
+const REQUIRED = ['companyName', 'title', 'firstName', 'lastName', 'email', 'phone', 'termsAccepted'];
+
+function isComplete(reg) {
+  return REQUIRED.every((f) => (f === 'termsAccepted' ? reg[f] === true : Boolean(reg[f])));
+}
+
+function render(leads) {
+  const list = document.getElementById('list');
+  if (!leads.length) {
+    list.innerHTML = '<p class="empty">No calls yet. Start one from the demo page.</p>';
+    return;
+  }
+
+  list.innerHTML = leads.map((lead) => {
+    const reg = lead.registration ?? {};
+    const complete = isComplete(reg);
+    const rows = FIELDS
+      .filter(([key]) => reg[key] !== undefined && reg[key] !== '')
+      .map(([key, label]) => {
+        const raw = reg[key];
+        const value = Array.isArray(raw) ? raw.join(', ') : String(raw);
+        return `<dt>${label}</dt><dd>${escapeHtml(value)}</dd>`;
+      })
+      .join('');
+
+    const transcript = (lead.transcript ?? [])
+      .map((t) => `<div class="turn ${t.role}"><b>${t.role === 'agent' ? 'Agent' : 'Caller'}</b><br>${escapeHtml(t.text)}</div>`)
+      .join('');
+
+    const started = new Date(lead.startedAt).toLocaleString('en-GB');
+
+    return `<div class="lead">
+      <div class="head">
+        <span class="name">${escapeHtml(reg.companyName || '(no company name yet)')}</span>
+        <span>
+          <span class="tag ${complete ? 'done' : 'partial'}">${complete ? 'complete' : 'partial'}</span>
+          ${lead.disposition ? `<span class="tag">${escapeHtml(lead.disposition)}</span>` : ''}
+        </span>
+      </div>
+      <div class="meta">${escapeHtml(lead.from)} · ${started}</div>
+      <dl>${rows || '<dd class="empty">Nothing captured yet</dd>'}</dl>
+      ${transcript ? `<details><summary>Transcript (${lead.transcript.length} turns)</summary>${transcript}</details>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+async function poll() {
+  try {
+    const res = await fetch('/api/leads');
+    render(await res.json());
+  } catch {
+    // Server restarting — try again on the next tick.
+  }
+}
+
+poll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>
