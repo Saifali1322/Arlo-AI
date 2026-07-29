@@ -1,0 +1,41 @@
+{
+  "_comment": "Reference config for the Free Business Registration inbound agent on Retell AI. Retell's dashboard/API field names shift between versions, so treat this as a checklist of settings rather than a literal import file. The content - prompt, functions, voice, greeting - is what matters and is accurate.",
+  "_client": "Free Business Registration Ltd",
+  "_live_line": "0203 432 8551",
+
+  "agent_name": "Ellie — Free Business Registration",
+  "voice_id": "11labs-Amy",
+  "voice_language": "en-GB",
+  "voice_speed": 1.05,
+
+  "response_engine": {
+    "type": "retell-llm",
+    "model": "gpt-4.1",
+    "general_prompt_file": "agent/clients/free-business-registration/inbound-prompt.md",
+    "begin_message": "Free Business Registration, Ellie speaking — are you looking to register a company, or is it about one you've already got with us?"
+  },
+
+  "functions_file": "agent/clients/free-business-registration/functions.json",
+
+  "ambient_sound": "off",
+  "interruption_sensitivity": 0.85,
+  "responsiveness": 0.95,
+  "enable_backchannel": true,
+  "backchannel_frequency": 0.7,
+  "normalize_for_speech": true,
+  "end_call_after_silence_ms": 20000,
+  "max_call_duration_ms": 900000,
+
+  "_normalisation_note": "normalize_for_speech must be on. Prices and phone numbers are read aloud: £399 must land as 'three hundred and ninety-nine pounds', and 0203 432 8551 as digits, not a number.",
+
+  "webhook_url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+
+  "availability": {
+    "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+    "hours": "24/7",
+    "timezone": "Europe/London",
+    "_note": "The site advertises 24/7 support, so the agent answers 24/7. Callbacks booked outside 09:00-17:30 Europe/London should be offered for the next working morning."
+  },
+
+  "post_call_notification_email": "hello@freebusinessregistration.com"
+}

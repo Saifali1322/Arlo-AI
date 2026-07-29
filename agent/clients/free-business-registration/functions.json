@@ -1,0 +1,191 @@
+{
+  "_comment": "Tool schemas for the Free Business Registration inbound agent (Ellie). Every url points at the n8n webhook for this client. Retell field names shift between versions - verify against current Retell docs before importing.",
+  "_client": "Free Business Registration Ltd (company no. 14889702)",
+  "_webhook_placeholder": "https://arlo111.app.n8n.cloud/webhook/fbr",
+
+  "tools": [
+    {
+      "type": "custom",
+      "name": "start_registration",
+      "description": "The most valuable call this business takes. A caller wants to register a UK limited company. Capture everything needed to file and get it to the formations team the same working day. Use this even if the caller has not settled on a company name yet - log the rest and set name_status to pending, so the lead is never lost. Read the company name spelling, email and phone number back before calling this.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "full_name":        { "type": "string", "description": "Caller's full name, as it will appear on the incorporation" },
+          "phone":            { "type": "string", "description": "Best contact number, read back and confirmed" },
+          "email":            { "type": "string", "description": "Email for the incorporation documents, read back and confirmed" },
+          "company_name":     { "type": "string", "description": "First-choice company name, spelling confirmed with the caller" },
+          "company_name_alt": { "type": "string", "description": "Second-choice name if the first is unavailable at Companies House" },
+          "name_status":      { "type": "string", "description": "Whether the caller has settled on a name", "enum": ["confirmed", "pending", "needs_help_choosing"] },
+          "business_activity":{ "type": "string", "description": "What the business will actually do, in the caller's own words - the team map this to a SIC code" },
+          "uk_resident":      { "type": "string", "description": "Whether the caller is UK resident. Non-residents can register but need a human to walk through address and banking", "enum": ["yes", "no", "not_stated"] },
+          "other_officers":   { "type": "string", "description": "Any additional directors or shareholders the caller mentioned, and roughly how shares are to be split if they volunteered it" },
+          "wants_bank_account": { "type": "boolean", "description": "True if the caller wants the free partner business bank account application included" },
+          "wants_phone_number": { "type": "boolean", "description": "True if the caller wants the free UK business phone number" },
+          "wants_website":    { "type": "boolean", "description": "True if the caller wants the free AI-built one-page website" },
+          "summary":          { "type": "string", "description": "Anything else the formations team should know before they file or ring back" }
+        },
+        "required": ["full_name", "phone", "email", "name_status", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "log_service_interest",
+      "description": "The caller has shown genuine interest in a paid service from the shop - a website, branding, social media, SEO, appointment setting or a starter pack. Never take payment or card details on the call; this hands a warm, qualified buyer to the sales team with the reason they need it. Only call this when the caller has given a real reason for the service, not because a service was mentioned.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": { "type": "string", "description": "Who is interested" },
+          "phone":        { "type": "string", "description": "Best contact number, read back and confirmed" },
+          "email":        { "type": "string", "description": "Email for the secure order link" },
+          "company_name": { "type": "string", "description": "Their business name, if they have one yet" },
+          "service":      {
+            "type": "string",
+            "description": "The exact shop item discussed. Never invent a service that is not on this list.",
+            "enum": [
+              "5_page_website_399",
+              "ecommerce_website_999",
+              "email_domain_setup_50",
+              "branding_package_299",
+              "graphic_design_bundle_199",
+              "promotional_video_99",
+              "promotional_video_bundle_299",
+              "social_bronze_199_mo",
+              "social_silver_299_mo",
+              "social_gold_399_mo",
+              "social_vip_499_mo",
+              "seo_bronze_99_mo",
+              "seo_silver_199_mo",
+              "seo_gold_299_mo",
+              "seo_vip_499_mo",
+              "appointment_setting_3000_mo",
+              "business_starter_pack_799",
+              "premium_starter_pack_1999",
+              "ultimate_starter_pack_4999",
+              "undecided"
+            ]
+          },
+          "why_they_need_it": { "type": "string", "description": "The problem in the caller's own words - this is what the sales team open on. Do not paraphrase into marketing language." },
+          "price_reaction":   { "type": "string", "description": "How they responded when the price was said out loud", "enum": ["happy", "hesitant", "too_expensive", "price_not_discussed"] },
+          "temperature":      { "type": "string", "description": "How ready they are to buy", "enum": ["ready_now", "interested", "just_asking"] },
+          "is_new_registration": { "type": "boolean", "description": "True if this came off the back of a company registration started on the same call" },
+          "summary":          { "type": "string", "description": "Anything else the sales team need before they ring" }
+        },
+        "required": ["contact_name", "phone", "service", "why_they_need_it", "temperature"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "book_callback",
+      "description": "Book a specific time for the UK team to ring the caller back. Use for non-UK residents, anyone needing legal, tax or structure advice, callers who want to think about it, and anyone who asks to speak to a person. Offer two specific times rather than asking open-endedly, read the agreed time back, and only confirm once this returns success.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": { "type": "string", "description": "Who to ring" },
+          "phone":        { "type": "string", "description": "Number to ring, read back and confirmed" },
+          "email":        { "type": "string", "description": "Email for the confirmation" },
+          "datetime":     { "type": "string", "description": "Agreed date and time in ISO 8601, Europe/London" },
+          "reason":       { "type": "string", "description": "Why they need a human", "enum": ["non_uk_resident", "advice_question", "wants_to_think", "service_quote", "existing_customer", "other"] },
+          "summary":      { "type": "string", "description": "What the caller wants covered, so the team open on it rather than starting cold" }
+        },
+        "required": ["contact_name", "phone", "reason", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "check_registration_status",
+      "description": "An existing customer is chasing their incorporation, certificate, company number or documents. Never invent or guess a status, never say an application has been approved or filed, and never give a timescale you were not given. Log the chase, note how they sound, and tell them when someone will come back.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": { "type": "string", "description": "Full name the application was made under" },
+          "phone":        { "type": "string", "description": "Contact number, read back and confirmed" },
+          "email":        { "type": "string", "description": "Email used on the application, if given" },
+          "company_name": { "type": "string", "description": "Company name they registered or applied for" },
+          "applied_when": { "type": "string", "description": "Roughly when they applied or last heard anything" },
+          "sentiment":    { "type": "string", "description": "How the caller sounds - drives how fast someone rings back", "enum": ["relaxed", "keen", "frustrated"] },
+          "summary":      { "type": "string", "description": "Exactly what they are asking about" }
+        },
+        "required": ["contact_name", "phone", "summary", "sentiment"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "support_request",
+      "description": "An existing customer needs help with something already set up: the partner business bank account application, their free UK phone number, the AI website builder or their hosted site, or their digital company documents. Never state whether a bank application has been approved or declined and never promise a banking timescale - the partner bank owns that decision.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": { "type": "string", "description": "Who is calling" },
+          "phone":        { "type": "string", "description": "Contact number, read back and confirmed" },
+          "company_name": { "type": "string", "description": "Their registered company name" },
+          "topic":        { "type": "string", "description": "What the request is about", "enum": ["bank_account", "phone_number", "website_builder", "hosted_website", "documents", "invoice_or_order", "other"] },
+          "urgency":      { "type": "string", "description": "How fast someone needs to respond", "enum": ["low", "normal", "urgent"] },
+          "summary":      { "type": "string", "description": "What they need, in enough detail that the team can fix it without ringing twice" }
+        },
+        "required": ["contact_name", "phone", "topic", "summary", "urgency"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "escalate_to_human",
+      "description": "Hand off to a person now. Use for a complaint, an angry or distressed caller, anyone threatening to leave or go elsewhere, anything legal, any refund or money dispute, and any suspected fraud or identity concern. Do not attempt to resolve, defend the company, explain policy, or offer anything - escalate early rather than late.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": { "type": "string", "description": "Who is calling" },
+          "phone":        { "type": "string", "description": "Callback number, read back and confirmed" },
+          "company_name": { "type": "string", "description": "Their company, if they have one with us" },
+          "reason":       { "type": "string", "description": "Why this needs a human", "enum": ["complaint", "refund_or_billing", "legal", "threatening_to_leave", "fraud_or_identity", "distressed_caller", "other"] },
+          "urgency":      { "type": "string", "description": "How fast someone must ring back", "enum": ["today", "within_hour", "immediately"] },
+          "summary":      { "type": "string", "description": "What happened, in the caller's own words where possible" }
+        },
+        "required": ["contact_name", "phone", "reason", "urgency", "summary"]
+      }
+    },
+
+    {
+      "type": "custom",
+      "name": "take_message",
+      "description": "Catch-all for anything that does not fit the other tools - suppliers, partnership enquiries, press, recruitment, wrong numbers worth logging. Always prefer a specific tool where one applies: someone registering a company is always start_registration, never this.",
+      "speak_during_execution": false,
+      "speak_after_execution": true,
+      "url": "https://arlo111.app.n8n.cloud/webhook/fbr",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": { "type": "string", "description": "Who called" },
+          "company":      { "type": "string", "description": "Their company, if relevant" },
+          "phone":        { "type": "string", "description": "Callback number, read back and confirmed" },
+          "caller_type":  { "type": "string", "description": "What kind of caller this is", "enum": ["prospective_customer", "existing_customer", "supplier", "partner", "press", "jobseeker", "other"] },
+          "urgency":      { "type": "string", "description": "How urgently to respond", "enum": ["low", "normal", "urgent"] },
+          "summary":      { "type": "string", "description": "What they wanted" }
+        },
+        "required": ["summary", "urgency"]
+      }
+    }
+  ]
+}
